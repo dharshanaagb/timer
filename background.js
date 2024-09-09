@@ -2,20 +2,37 @@ console.log("service worker")
 
 //state of timer
 let timer_running=false
-//bell
-let s=0
+let seconds=25
+
+//creating a timer of 25 minutes
+
 chrome.alarms.onAlarm.addListener((alarm)=>{
-    //no of calls 
-    console.log(++s)
+   
+    const minsLeft=Math.floor(seconds/(60*60))+" M"
+    chrome.action.setBadgeText(
+        {
+            text:minsLeft
+        }
+    )
+   
+    seconds--;
+    if (seconds<=0){
+        clearAlarm('start-timer')
+    }
+    createNotification("Your time has finished, take a break!")
+    chrome.contextMenus.update("start-timer",{
+        title:"start-timer",
+        contexts:["all"]
+    })
+    timer_running=false
 });
 
 
 //function to create alarm
 function createAlarm(name){
+    
     chrome.alarms.create(
         name,
-        //alarm info obj
-        //periods in mins disp
         {
             periodInMinutes:1/60,
         },
@@ -34,29 +51,39 @@ function clearAlarm(name){
     )
 }
 
+//function for notifications
+function createNotification(message) {
+    chrome.notifications.create(
+        {
+            type: "basic", 
+            iconUrl: "icons/time-128.png",
+            title: "Timer",
+            message: message,
+            // The `items` property is not used for type "basic"
+        },
+        function(notificationId) {
+            if (chrome.runtime.lastError) {
+                console.error(`Error creating notification: ${chrome.runtime.lastError.message}`);
+            } else {
+                console.log(`Notification created with ID: ${notificationId}`);
+            }
+        }
+    );
+}
 
+
+//context menu for the timer (start/stop timer)
 chrome.contextMenus.create(
-    // createProperties:CreateProperties,
-    // callback?:function,
     {
         id:"start-timer",
         title:"start timer",
         contexts:["all"]
     }
 )
-chrome.contextMenus.create(
-    // createProperties:CreateProperties,
-    // callback?:function,
-    {
-        id:"reset-timer",
-        title:"reset timer",
-        contexts:["all"]
-    }
-)
 
-//update context menu to reset while alarm is running
 
-//onclick of context
+
+//update context menu and alarm on click 
 chrome.contextMenus.onClicked.addListener(function(info,tab){
     // console.log(info)
     // console.log(tab)
@@ -66,18 +93,25 @@ chrome.contextMenus.onClicked.addListener(function(info,tab){
             if(timer_running)
                 {
                     timer_running=!timer_running
+                    //clearing alarm
                     clearAlarm("start timer alarm")
-                    //reset to start timer
+                    createNotification("Stopping timer")
+                    //reset the context menu to starrt timer
                     chrome.contextMenus.update("start-timer",{
                         title:"start-timer",
                         contexts:["all"]
                     })
                     return 
                 }
+            //create nofication indicating the start of timer
+            createNotification("Timer has started")
             timer_running=true
+            //reset the seconds
+            seconds = 25 * 60; // Reset timer to 25 minutes in seconds
             console.log("Starting the timer")
             //create the alarm
-            createAlarm("start timer alarm")
+            createAlarm("creating timer alarm")
+            //update the menu to stop timer
             chrome.contextMenus.update("start-timer",{
                 title:"stop-timer",
                 contexts:["all"]
